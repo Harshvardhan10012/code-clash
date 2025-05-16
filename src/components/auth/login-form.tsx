@@ -1,3 +1,4 @@
+
 // src/components/auth/login-form.tsx
 "use client";
 
@@ -152,7 +153,7 @@ export function LoginForm() {
             </div>
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}
-              <Link href="#" className="font-semibold text-primary hover:underline">
+              <Link href="/signup" className="font-semibold text-primary hover:underline">
                 Sign Up
               </Link>
             </div>
