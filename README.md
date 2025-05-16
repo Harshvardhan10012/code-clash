@@ -1,4 +1,4 @@
-# Firebase Studio - Code Clash App
+#  - Code Clash App
 
 This is a Next.js starter app for "Code Clash", an application where users can predict outcomes of coding challenges. It's built with Next.js, React, ShadCN UI, Tailwind CSS, and Genkit for AI features.
 
@@ -104,4 +104,5 @@ Replace placeholder images (`https://placehold.co/...`) with professional, relev
 
 This list provides a starting point. Making an application "production-level" is an ongoing process of improvement and maintenance.
 ```
-![image](https://github.com/user-attachments/assets/5424376f-248d-494d-9516-074b705fe57f)
+![f7565c9d-4dd2-4a68-a41c-0cfd83d595eb](https://github.com/user-attachments/assets/49913d09-fdcf-4430-b827-8e855e49f385)
+
