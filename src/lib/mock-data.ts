@@ -1,4 +1,9 @@
-import type { Challenge, User, Prediction } from '@/types';
+import type { Challenge, User, Prediction, ProposedBet, TestCase } from '@/types';
+import { v4 as uuidv4 } from 'uuid'; // Placeholder for generating unique IDs
+
+// Helper to simulate UUID generation if not available or for consistency
+const generateId = (): string => typeof uuidv4 === 'function' ? uuidv4() : `id-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+
 
 export const mockUsers: User[] = [
   { id: 'user1', name: 'Alice Coder', avatarUrl: 'https://placehold.co/100x100.png', aiHintAvatar: 'woman portrait', score: 1250 },
@@ -80,10 +85,10 @@ export const mockChallenges: Challenge[] = [
   }
 ];
 
-export const mockPredictions: Prediction[] = [
+export let mockPredictions: Prediction[] = [ // Changed to let for modification
   {
     id: 'pred1',
-    userId: 'user1',
+    userId: 'user1', // Alice
     challengeId: 'challenge3',
     submittedCode: 'function isPalindrome(s) { /* ... Alice Coder implementation ... */ }',
     predictedOutcome: { willPass: true },
@@ -94,7 +99,7 @@ export const mockPredictions: Prediction[] = [
   },
   {
     id: 'pred2',
-    userId: 'user2',
+    userId: 'user2', // Bob
     challengeId: 'challenge3',
     submittedCode: 'function isPalindrome(s) { /* ... Bob Scripter implementation ... */ }',
     predictedOutcome: { willPass: true },
@@ -103,9 +108,9 @@ export const mockPredictions: Prediction[] = [
     pointsEarned: 0,
     submissionDate: new Date(new Date(mockChallenges[2].deadline).getTime() - (1000 * 60 * 60 * 1)).toISOString() // 1 hour before deadline
   },
-    {
+  {
     id: 'pred3',
-    userId: 'user4',
+    userId: 'user4', // Diana
     challengeId: 'challenge4',
     submittedCode: 'class TreeNode:\n    # ... Diana Algorithm BST implementation ...',
     predictedOutcome: { willPass: true },
@@ -116,7 +121,7 @@ export const mockPredictions: Prediction[] = [
   },
   {
     id: 'pred4',
-    userId: 'user1',
+    userId: 'user1', // Alice
     challengeId: 'challenge4',
     submittedCode: 'class TreeNode:\n    # ... Alice Coder simpler BST attempt ...',
     predictedOutcome: { willPass: true },
@@ -124,8 +129,29 @@ export const mockPredictions: Prediction[] = [
     isCorrect: false,
     pointsEarned: 0,
     submissionDate: new Date(new Date(mockChallenges[3].deadline).getTime() - (1000 * 60 * 60 * 3)).toISOString()
-  }
+  },
+  // Add some predictions for open challenges for betting demo
+  {
+    id: 'pred5',
+    userId: 'user2', // Bob
+    challengeId: 'challenge1', // Two Sum (open)
+    submittedCode: '// Bob solution for Two Sum',
+    predictedOutcome: { willPass: true },
+    submissionDate: new Date().toISOString(),
+    pointsEarned: 0, // Not resolved yet
+  },
+  {
+    id: 'pred6',
+    userId: 'user3', // Charlie
+    challengeId: 'challenge1', // Two Sum (open)
+    submittedCode: '// Charlie solution for Two Sum',
+    predictedOutcome: { willPass: false },
+    submissionDate: new Date().toISOString(),
+    pointsEarned: 0, // Not resolved yet
+  },
 ];
+
+export let mockProposedBets: ProposedBet[] = []; // Changed to let
 
 // Function to get a challenge by ID
 export const getChallengeById = (id: string): Challenge | undefined => {
@@ -140,4 +166,58 @@ export const getPredictionsForChallenge = (challengeId: string): Prediction[] =>
 // Function to get user by ID
 export const getUserById = (userId: string): User | undefined => {
   return mockUsers.find(user => user.id === userId);
-}
+};
+
+// Function to get predictions by *other* users for a challenge
+export const getPredictionsByOtherUsers = (challengeId: string, currentUserId: string): (Prediction & { user?: User })[] => {
+  return mockPredictions
+    .filter(p => p.challengeId === challengeId && p.userId !== currentUserId)
+    .map(p => ({ ...p, user: getUserById(p.userId) }));
+};
+
+// Function to propose a new bet
+export const proposeBet = (
+  challengeId: string,
+  proposingUserId: string,
+  targetUserId: string,
+  targetPredictionId: string,
+  betAmount: number
+): ProposedBet => {
+  const newBet: ProposedBet = {
+    id: generateId(),
+    challengeId,
+    proposingUserId,
+    targetUserId,
+    targetPredictionId,
+    betAmount,
+    status: 'pending_acceptance',
+    createdAt: new Date().toISOString(),
+  };
+  mockProposedBets.push(newBet);
+  return newBet;
+};
+
+// Function to get all proposed bets for a challenge
+export const getProposedBetsForChallenge = (challengeId: string): (ProposedBet & { proposingUser?: User, targetUser?: User })[] => {
+  return mockProposedBets
+    .filter(bet => bet.challengeId === challengeId)
+    .map(bet => ({
+      ...bet,
+      proposingUser: getUserById(bet.proposingUserId),
+      targetUser: getUserById(bet.targetUserId),
+    }));
+};
+
+// Function to add a new prediction (e.g. from prediction modal)
+export const addPrediction = (predictionData: Omit<Prediction, 'id' | 'submissionDate' | 'pointsEarned' | 'actualOutcome' | 'isCorrect'>): Prediction => {
+    const newPrediction: Prediction = {
+        ...predictionData,
+        id: generateId(),
+        submissionDate: new Date().toISOString(),
+        pointsEarned: 0, // Default, updated upon resolution
+    };
+    mockPredictions.push(newPrediction);
+    // Update user score if prediction is part of initial data that implies points
+    // For now, score updates happen elsewhere or are part of mock data setup
+    return newPrediction;
+};

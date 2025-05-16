@@ -54,3 +54,18 @@ export interface Prediction {
   pointsEarned: number;
   submissionDate: string; // ISO date string
 }
+
+export interface ProposedBet {
+  id: string;
+  challengeId: string;
+  proposingUserId: string; // User who is making the bet (Proposer)
+  targetUserId: string;    // User whose prediction is the subject of the bet (Target)
+  targetPredictionId: string; // The ID of the Target's prediction
+  betAmount: number;
+  // The Proposer is betting that the Target's prediction will be INCORRECT.
+  // e.g., If Target predicted PASS, Proposer bets actual outcome will be FAIL.
+  status: 'pending_acceptance' | 'accepted' | 'declined' | 'resolved' | 'cancelled';
+  winnerId?: string; // proposingUserId or targetUserId
+  createdAt: string; // ISO date string
+  resolvedAt?: string; // ISO date string
+}

@@ -4,13 +4,26 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { mockChallenges, mockUsers, mockPredictions, getChallengeById, getPredictionsForChallenge, getUserById } from '@/lib/mock-data';
+import {
+  mockChallenges,
+  mockUsers,
+  mockPredictions,
+  getChallengeById,
+  getPredictionsForChallenge,
+  getUserById,
+  getPredictionsByOtherUsers,
+  proposeBet as proposeBetAction,
+  getProposedBetsForChallenge,
+  addPrediction as addPredictionAction,
+  type ProposedBet as ProposedBetType,
+} from '@/lib/mock-data';
 import type { Challenge, Prediction as PredictionType, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle, Clock, Code, FileText, Loader2, MessageSquare, Tag, Users, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Code, FileText, Loader2, MessageSquare, Tag, Users, Zap, ShieldQuestion, Handshake } from 'lucide-react';
 import { PredictionModal } from '@/components/prediction-modal';
+import { ProposeBetModal } from '@/components/propose-bet-modal';
 import { SolutionCard } from '@/components/solution-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -23,6 +36,14 @@ interface EnrichedPrediction extends PredictionType {
   user?: User;
 }
 
+interface EnrichedProposedBet extends ProposedBetType {
+  proposingUser?: User;
+  targetUser?: User;
+}
+
+// Simulate a logged-in user. In a real app, this would come from an auth context.
+const CURRENT_USER_ID = mockUsers[0]?.id || 'user1'; // Alice Coder
+
 export default function ChallengeDetailPage() {
   const params = useParams();
   const challengeId = params.id as string;
@@ -30,12 +51,15 @@ export default function ChallengeDetailPage() {
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [predictions, setPredictions] = useState<EnrichedPrediction[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [otherUserPredictions, setOtherUserPredictions] = useState<EnrichedPrediction[]>([]);
+  const [proposedBets, setProposedBets] = useState<EnrichedProposedBet[]>([]);
+  const [isPredictionModalOpen, setIsPredictionModalOpen] = useState(false);
+  const [isProposeBetModalOpen, setIsProposeBetModalOpen] = useState(false);
+  const [betTargetPrediction, setBetTargetPrediction] = useState<EnrichedPrediction | null>(null);
   const [isLoadingAssessment, setIsLoadingAssessment] = useState(false);
   const [simulatedTestCases, setSimulatedTestCases] = useState<Awaited<ReturnType<typeof generateTestCases>>['testCases'] | null>(null);
 
-
-  useEffect(() => {
+  const refreshChallengeData = () => {
     if (challengeId) {
       const foundChallenge = getChallengeById(challengeId);
       if (foundChallenge) {
@@ -46,8 +70,18 @@ export default function ChallengeDetailPage() {
           user: getUserById(p.userId)
         }));
         setPredictions(enrichedPredictions);
+
+        const otherPredictions = getPredictionsByOtherUsers(challengeId, CURRENT_USER_ID);
+        setOtherUserPredictions(otherPredictions);
+
+        const currentProposedBets = getProposedBetsForChallenge(challengeId);
+        setProposedBets(currentProposedBets);
       }
     }
+  };
+
+  useEffect(() => {
+    refreshChallengeData();
   }, [challengeId]);
 
   if (!challenge) {
@@ -58,17 +92,23 @@ export default function ChallengeDetailPage() {
   const formattedDeadline = format(new Date(challenge.deadline), "MMMM d, yyyy 'at' h:mm a");
 
   const handlePredictionSubmit = async (code: string, predictedWillPass: boolean) => {
-    setIsModalOpen(false);
+    setIsPredictionModalOpen(false);
+    
+    // Add the new prediction to mock data
+    addPredictionAction({
+      userId: CURRENT_USER_ID, // Assume current user is making the prediction
+      challengeId: challenge.id,
+      submittedCode: code,
+      predictedOutcome: { willPass: predictedWillPass },
+    });
+    
     toast({
       title: "Prediction Submitted!",
       description: "Your prediction and code have been recorded.",
     });
-    // In a real app, you would save this prediction to a backend.
-    // For now, we can add it to the local state or just simulate.
-    console.log("Submitted code:", code);
-    console.log("Predicted outcome (willPass):", predictedWillPass);
+    
+    refreshChallengeData(); // Refresh data to show new prediction
 
-    // Simulate AI interaction for immediate feedback (optional, for demo)
     if (challenge.status === 'open') {
         setIsLoadingAssessment(true);
         toast({
@@ -83,7 +123,7 @@ export default function ChallengeDetailPage() {
                     programmingLanguage: challenge.language,
                 });
                 currentTestCases = generated.testCases;
-                setSimulatedTestCases(currentTestCases); // Store for display if needed
+                setSimulatedTestCases(currentTestCases);
                  toast({
                     title: "AI Generated Test Cases",
                     description: `${currentTestCases.length} test cases were generated for this challenge.`,
@@ -116,11 +156,36 @@ export default function ChallengeDetailPage() {
     }
   };
 
+  const handleOpenProposeBetModal = (targetPrediction: EnrichedPrediction) => {
+    setBetTargetPrediction(targetPrediction);
+    setIsProposeBetModalOpen(true);
+  };
+
+  const handleProposeBetSubmit = (betAmount: number) => {
+    if (!betTargetPrediction || !betTargetPrediction.user) return;
+
+    proposeBetAction(
+      challenge.id,
+      CURRENT_USER_ID,
+      betTargetPrediction.userId,
+      betTargetPrediction.id,
+      betAmount
+    );
+    toast({
+      title: "Bet Proposed!",
+      description: `You proposed a ${betAmount} point bet against ${betTargetPrediction.user.name}.`,
+    });
+    setIsProposeBetModalOpen(false);
+    setBetTargetPrediction(null);
+    refreshChallengeData(); // Re-fetch bets
+  };
+
+
   const renderChallengeStatusSpecificContent = () => {
     switch (challenge.status) {
       case 'open':
         return (
-          <Button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" size="lg" disabled={isLoadingAssessment}>
+          <Button onClick={() => setIsPredictionModalOpen(true)} className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" size="lg" disabled={isLoadingAssessment}>
             {isLoadingAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Code className="mr-2 h-5 w-5" />}
             {isLoadingAssessment ? 'Analyzing...' : 'Make Your Prediction'}
           </Button>
@@ -139,7 +204,7 @@ export default function ChallengeDetailPage() {
       case 'completed':
         return (
           <div>
-            <h2 className="mb-4 text-2xl font-semibold text-primary">Challenge Results & Submissions</h2>
+            <h3 className="mb-4 text-2xl font-semibold text-primary">Challenge Results & Submissions</h3>
             {predictions.length > 0 ? (
               <ScrollArea className="h-[600px] rounded-md border p-4">
                  <div className="space-y-6">
@@ -159,7 +224,7 @@ export default function ChallengeDetailPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-8">
       <Card className="overflow-hidden shadow-xl">
         {challenge.imageUrl && (
           <div className="relative h-64 w-full md:h-80">
@@ -229,8 +294,6 @@ export default function ChallengeDetailPage() {
                 </ScrollArea>
             </div>
           )}
-
-
         </CardContent>
         <CardFooter className="flex flex-col items-start gap-4 bg-muted/50 p-6">
           <div className="flex items-center text-lg font-medium">
@@ -241,14 +304,73 @@ export default function ChallengeDetailPage() {
         </CardFooter>
       </Card>
 
+      {/* Section for Other Users' Predictions and Proposing Bets */}
+      {challenge.status === 'open' && otherUserPredictions.length > 0 && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary flex items-center"><ShieldQuestion className="mr-2 h-5 w-5"/>Other Users' Predictions</CardTitle>
+            <CardDescription>See what others are predicting for this challenge and propose a bet!</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {otherUserPredictions.map(p => (
+              <div key={p.id} className="flex items-center justify-between p-3 border rounded-md bg-card">
+                <div>
+                  <p className="font-semibold">{p.user?.name || 'Anonymous'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Predicts their solution will: <Badge variant={p.predictedOutcome.willPass ? 'default' : 'destructive'} className={p.predictedOutcome.willPass ? 'bg-green-500' : 'bg-red-500'}>{p.predictedOutcome.willPass ? 'Pass' : 'Fail'}</Badge>
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => handleOpenProposeBetModal(p)}>
+                  Propose Bet
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Section to display proposed bets */}
+      {proposedBets.length > 0 && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-primary flex items-center"><Handshake className="mr-2 h-5 w-5"/>Proposed Side Bets on this Challenge</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {proposedBets.map(bet => (
+              <div key={bet.id} className="p-3 border rounded-md bg-card text-sm">
+                <p>
+                  <span className="font-semibold">{bet.proposingUser?.name || 'Someone'}</span> proposed a <Badge variant="secondary">{bet.betAmount} point</Badge> bet against <span className="font-semibold">{bet.targetUser?.name || 'someone'}</span>.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  (Betting that {bet.targetUser?.name}'s prediction will be incorrect. Status: {bet.status.replace('_', ' ')})
+                </p>
+                 {/* TODO: Add Accept/Decline buttons if bet.targetUserId === CURRENT_USER_ID && bet.status === 'pending_acceptance' */}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
       <PredictionModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isPredictionModalOpen}
+        onClose={() => setIsPredictionModalOpen(false)}
         onSubmit={handlePredictionSubmit}
         challengeTitle={challenge.title}
         challengeLanguage={challenge.language}
         defaultCode={challenge.exampleSolution || `// Your ${challenge.language} code here`}
       />
+
+      {betTargetPrediction && challenge && (
+        <ProposeBetModal
+          isOpen={isProposeBetModalOpen}
+          onClose={() => { setIsProposeBetModalOpen(false); setBetTargetPrediction(null); }}
+          onSubmit={handleProposeBetSubmit}
+          challengeTitle={challenge.title}
+          targetUser={betTargetPrediction.user}
+          targetPredictionOutcome={betTargetPrediction.predictedOutcome.willPass}
+        />
+      )}
     </div>
   );
 }
