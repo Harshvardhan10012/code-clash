@@ -104,3 +104,4 @@ Replace placeholder images (`https://placehold.co/...`) with professional, relev
 
 This list provides a starting point. Making an application "production-level" is an ongoing process of improvement and maintenance.
 ```
+![image](https://github.com/user-attachments/assets/5424376f-248d-494d-9516-074b705fe57f)
