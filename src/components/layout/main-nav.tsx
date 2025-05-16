@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react"
 import Link from "next/link"
 import type { NavItem } from "@/types"
@@ -24,6 +26,14 @@ const defaultNavItems: NavItem[] = [
 
 export function MainNav({ items = defaultNavItems, children }: MainNavProps) {
   const [showMobileMenu, setShowMobileMenu] = React.useState<boolean>(false)
+  const [pathname, setPathname] = React.useState("")
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPathname(window.location.pathname)
+    }
+  }, []) // Re-check pathname on mount
+
 
   return (
     <div className="flex gap-6 md:gap-10">
@@ -41,7 +51,7 @@ export function MainNav({ items = defaultNavItems, children }: MainNavProps) {
               href={item.disabled ? "#" : item.href}
               className={cn(
                 "flex items-center text-lg font-medium transition-colors hover:text-foreground/80 sm:text-sm",
-                item.href.startsWith(typeof window !== 'undefined' ? window.location.pathname : '/') ? "text-foreground" : "text-foreground/60",
+                item.href.startsWith(pathname) ? "text-foreground" : "text-foreground/60",
                 item.disabled && "cursor-not-allowed opacity-80"
               )}
             >
