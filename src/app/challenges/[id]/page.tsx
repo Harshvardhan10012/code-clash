@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -15,7 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { generateTestCases, predictCodeSolutionOutcome } from '@/ai/flows'; // Import AI functions
+import { generateTestCases } from '@/ai/flows/generate-test-cases';
+import { predictCodeSolutionOutcome } from '@/ai/flows/predict-code-solution-outcome';
 
 interface EnrichedPrediction extends PredictionType {
   user?: User;
