@@ -1,7 +1,8 @@
 // src/components/auth/login-form.tsx
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react"; // Updated import
+import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -34,7 +35,8 @@ type LoginFormData = z.infer<typeof LoginSchema>;
 export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [state, dispatch] = useFormState<LoginFormState, FormData>(login, undefined);
+  // Updated to use useActionState
+  const [state, dispatch] = useActionState<LoginFormState, FormData>(login, undefined);
   const { pending } = useFormStatus();
 
   const form = useForm<LoginFormData>({
@@ -161,6 +163,9 @@ export function LoginForm() {
   );
 }
 
+// Note: The LoginButton component was not being used here, 
+// so it could be removed or kept if intended for future use.
+// For this change, I'm keeping it as it doesn't affect the error.
 function LoginButton() {
   const { pending } = useFormStatus();
   return (
